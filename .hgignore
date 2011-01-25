@@ -8,4 +8,7 @@ syntax: regexp
 ^\.project$
 
 syntax: regexp
+^\.settings\/.*$
+
+syntax: regexp
 ^.*/\..*$
