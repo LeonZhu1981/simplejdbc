@@ -43,6 +43,7 @@ public class Db implements InitializingBean {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public void afterPropertiesSet() throws Exception {
+        log.info("Init db...");
         // scan package:
         List<Class<?>> classes = new ClasspathScanner(packageName, new ClasspathScanner.ClassFilter() {
             public boolean accept(Class<?> clazz) {
@@ -50,6 +51,7 @@ public class Db implements InitializingBean {
             }
         }).scan();
         for (Class<?> clazz : classes) {
+            log.info("Found entity class: " + clazz.getName());
             EntityOperation<?> op = new EntityOperation(clazz);
             entityMap.put(clazz.getName(), op);
             tableMap.put(op.tableName, op);
@@ -90,22 +92,25 @@ public class Db implements InitializingBean {
 
     final Pattern SELECT_FROM = Pattern.compile("^(select|SELECT) .* (from|FROM) +(\\w+) ?.*$");
 
-    @SuppressWarnings("unchecked")
-    public <T> List<T> queryForList(String sql, Object... params) {
-        log.info("Query for list: " + sql);
-        Matcher m = SELECT_FROM.matcher(sql);
-        if ( ! m.matches()) {
-            throw new DbException("SQL gramma error: " + sql);
-        }
-        EntityOperation<?> op = getEntityOperationByTableName(m.group(3));
-        List<T> list = (List<T>) jdbcTemplate.query(sql, params, op.rowMapper);
-        return list;
-    }
-
+    /**
+     * Execute any update SQL statement.
+     * 
+     * @param sql SQL query.
+     * @param params SQL parameters.
+     * @return Number of affected rows.
+     */
     public int executeUpdate(String sql, Object... params) {
         return jdbcTemplate.update(sql, params);
     }
 
+    /**
+     * Delete an entity by its id property. For example:
+     * 
+     * User user = new User(12300); // id=12300
+     * db.deleteEntity(user);
+     * 
+     * @param entity Entity object instance.
+     */
     public void deleteEntity(Object entity) {
         EntityOperation<?> op = getEntityOperation(entity.getClass());
         try {
@@ -153,6 +158,16 @@ public class Db implements InitializingBean {
         jdbcTemplate.update(sqlo.sql, sqlo.params);
     }
 
+    /**
+     * Query for long result. For example:
+     * <code>
+     * long count = db.queryForLong("select count(*) from User where age>?", 20);
+     * </code>
+     * 
+     * @param sql SQL query statement.
+     * @param args SQL query parameters.
+     * @return Long result.
+     */
     public long queryForLong(String sql, Object... args) {
         log.info("Query for long: " + sql);
         List<Long> list = jdbcTemplate.query(sql, args, longRowMapper);
@@ -163,6 +178,16 @@ public class Db implements InitializingBean {
         return list.get(0);
     }
 
+    /**
+     * Query for int result. For example:
+     * <code>
+     * int count = db.queryForLong("select count(*) from User where age>?", 20);
+     * </code>
+     * 
+     * @param sql SQL query statement.
+     * @param args SQL query parameters.
+     * @return Int result.
+     */
     public int queryForInt(String sql, Object... args) {
         log.info("Query for int: " + sql);
         List<Integer> list = jdbcTemplate.query(sql, args, intRowMapper);
@@ -173,6 +198,16 @@ public class Db implements InitializingBean {
         return list.get(0);
     }
 
+    /**
+     * Query for one single object. For example:
+     * <code>
+     * User user = db.queryForObject("select * from User where name=?", "Michael");
+     * </code>
+     * 
+     * @param sql SQL query statement.
+     * @param args SQL query parameters.
+     * @return The only one single result, or null if no result.
+     */
     public <T> T queryForObject(String sql, Object... args) {
         log.info("Query for object: " + sql);
         List<T> list = queryForList(sql, args);
@@ -183,6 +218,42 @@ public class Db implements InitializingBean {
         return list.get(0);
     }
 
+    /**
+     * Query for list. For example:
+     * <code>
+     * List&lt;User&gt; users = db.queryForList("select * from User where age>?", 20);
+     * </code>
+     * 
+     * @param <T> Return type of list element.
+     * @param sql SQL query.
+     * @param params SQL parameters.
+     * @return List of query result.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> List<T> queryForList(String sql, Object... params) {
+        log.info("Query for list: " + sql);
+        Matcher m = SELECT_FROM.matcher(sql);
+        if ( ! m.matches()) {
+            throw new DbException("SQL grammar error: " + sql);
+        }
+        EntityOperation<?> op = getEntityOperationByTableName(m.group(3));
+        return (List<T>) jdbcTemplate.query(sql, params, op.rowMapper);
+    }
+
+    /**
+     * Query for limited list. For example:
+     * <code>
+     * // first 5 users:
+     * List&lt;User&gt; users = db.queryForList("select * from User where age>?", 0, 5, 20);
+     * </code>
+     * 
+     * @param <T> Return type of list element.
+     * @param sql SQL query.
+     * @param first First result index.
+     * @param max Max results.
+     * @param params SQL parameters.
+     * @return List of query result.
+     */
     public <T> List<T> queryForLimitedList(String sql, int first, int max, Object... args) {
         log.info("Query for limited list (first=" + first + ", max=" + max + "): " + sql);
         Object[] newArgs = new Object[args.length + 2];
@@ -194,6 +265,14 @@ public class Db implements InitializingBean {
         return queryForList(buildLimitedSelect(sql), newArgs);
     }
 
+    /**
+     * Get entity by its id.
+     * 
+     * @param <T> Entity class type.
+     * @param clazz Entity class type.
+     * @param idValue Id value.
+     * @return Entity instance, or null if no such entity.
+     */
     @SuppressWarnings("unchecked")
     public <T> T getById(Class<T> clazz, Object idValue) {
         EntityOperation<?> op = getEntityOperationByEntityName(clazz.getName());
@@ -207,7 +286,7 @@ public class Db implements InitializingBean {
     }
 
     /**
-     * Create an entity in database.
+     * Create an entity in database, writing all insertable properties.
      * 
      * @param entity Entity object instance.
      */
@@ -226,7 +305,7 @@ public class Db implements InitializingBean {
     /**
      * Delete an entity by its id value.
      * 
-     * @param clazz Entity class.
+     * @param clazz Entity class type.
      * @param idValue Id value.
      */
     public void deleteById(Class<?> clazz, Object idValue) {

@@ -18,6 +18,13 @@ import javax.persistence.Transient;
 
 import org.springframework.jdbc.core.RowMapper;
 
+/**
+ * Entity's operations.
+ * 
+ * @author Michael Liao
+ *
+ * @param <T> Entity class type.
+ */
 class EntityOperation<T> {
 
     final String tableName;

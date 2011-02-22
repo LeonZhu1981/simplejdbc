@@ -1,5 +1,10 @@
 package org.expressme.simplejdbc;
 
+/**
+ * Exception when db error.
+ * 
+ * @author Michael Liao
+ */
 public class DbException extends RuntimeException {
 
     public DbException() {
