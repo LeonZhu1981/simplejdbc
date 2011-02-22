@@ -1,15 +1,17 @@
 package org.expressme.test2;
 
+import java.util.Date;
+
 import javax.persistence.Entity;
 import javax.persistence.Id;
 
 @Entity
-public class Job {
+public class Employee {
 
     int id;
-    int level;
     String title;
-    String description;
+    String name;
+    Date registration;
 
     @Id
     public int getId() {
@@ -20,14 +22,6 @@ public class Job {
         this.id = id;
     }
 
-    public int getLevel() {
-        return level;
-    }
-
-    public void setLevel(int level) {
-        this.level = level;
-    }
-
     public String getTitle() {
         return title;
     }
@@ -36,12 +30,20 @@ public class Job {
         this.title = title;
     }
 
-    public String getDescription() {
-        return description;
+    public String getName() {
+        return name;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Date getRegistration() {
+        return registration;
+    }
+
+    public void setRegistration(Date registration) {
+        this.registration = registration;
     }
 
 }

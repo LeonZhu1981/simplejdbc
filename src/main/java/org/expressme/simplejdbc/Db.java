@@ -2,10 +2,9 @@ package org.expressme.simplejdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -14,7 +13,6 @@ import javax.persistence.Entity;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
@@ -27,13 +25,21 @@ public class Db implements InitializingBean {
 
     final Log log = LogFactory.getLog(getClass());
 
-    @Autowired
     JdbcTemplate jdbcTemplate;
 
-    @Autowired
     String packageName;
 
-    Map<String, EntityOperation<?>> entityMap = new ConcurrentHashMap<String, EntityOperation<?>>();
+    public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    public void setPackageName(String packageName) {
+        this.packageName = packageName;
+    }
+
+    final Map<String, EntityOperation<?>> entityMap = new HashMap<String, EntityOperation<?>>();
+
+    final Map<String, EntityOperation<?>> tableMap = new HashMap<String, EntityOperation<?>>();
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public void afterPropertiesSet() throws Exception {
@@ -44,15 +50,25 @@ public class Db implements InitializingBean {
             }
         }).scan();
         for (Class<?> clazz : classes) {
-            entityMap.put(clazz.getName(), new EntityOperation(clazz));
+            EntityOperation<?> op = new EntityOperation(clazz);
+            entityMap.put(clazz.getName(), op);
+            tableMap.put(op.tableName, op);
         }
     }
 
     EntityOperation<?> getEntityOperation(Class<?> entityClass) {
-        return getEntityOperation(entityClass.getName());
+        return getEntityOperationByEntityName(entityClass.getName());
     }
 
-    EntityOperation<?> getEntityOperation(String entityClassName) {
+    EntityOperation<?> getEntityOperationByTableName(String tableName) {
+        EntityOperation<?> op = tableMap.get(tableName);
+        if (op==null) {
+            throw new DbException("Unknown table: " + tableName);
+        }
+        return op;
+    }
+
+    EntityOperation<?> getEntityOperationByEntityName(String entityClassName) {
         EntityOperation<?> op = entityMap.get(entityClassName);
         if (op==null) {
             throw new DbException("Unknown entity: " + entityClassName);
@@ -74,16 +90,15 @@ public class Db implements InitializingBean {
 
     final Pattern SELECT_FROM = Pattern.compile("^(select|SELECT) .* (from|FROM) +(\\w+) ?.*$");
 
+    @SuppressWarnings("unchecked")
     public <T> List<T> queryForList(String sql, Object... params) {
         log.info("Query for list: " + sql);
         Matcher m = SELECT_FROM.matcher(sql);
         if ( ! m.matches()) {
             throw new DbException("SQL gramma error: " + sql);
         }
-        String entityClassName = this.packageName + '.' + m.group(3);
-        EntityOperation<?> op = getEntityOperation(entityClassName);
-        jdbcTemplate.query(sql, op.rowMapper);
-        List<T> list = new LinkedList<T>();
+        EntityOperation<?> op = getEntityOperationByTableName(m.group(3));
+        List<T> list = (List<T>) jdbcTemplate.query(sql, params, op.rowMapper);
         return list;
     }
 
@@ -179,10 +194,16 @@ public class Db implements InitializingBean {
         return queryForList(buildLimitedSelect(sql), newArgs);
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T getById(Class<T> clazz, Object idValue) {
-        EntityOperation<?> op = getEntityOperation(clazz.getName());
+        EntityOperation<?> op = getEntityOperationByEntityName(clazz.getName());
         SQLOperation sqlo = op.getById(idValue);
-        return queryForObject(sqlo.sql, sqlo.params);
+        List<T> list = (List<T>) jdbcTemplate.query(sqlo.sql, sqlo.params, op.rowMapper);
+        if (list.isEmpty())
+            return null;
+        if (list.size()>1)
+            throw new DbException("non-unique results.");
+        return list.get(0);
     }
 
     /**

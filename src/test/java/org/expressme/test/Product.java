@@ -2,18 +2,23 @@ package org.expressme.test;
 
 import java.util.Date;
 
+import javax.persistence.Entity;
+import javax.persistence.Id;
+
+@Entity
 public class Product {
 
-    int id;
+    long id;
     String name;
     float price;
     Date expires;
 
-    public int getId() {
+    @Id
+    public long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(long id) {
         this.id = id;
     }
 
