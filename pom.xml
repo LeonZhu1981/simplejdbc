@@ -2,7 +2,7 @@
   <parent>
     <artifactId>oss-parent</artifactId>
     <groupId>org.sonatype.oss</groupId>
-    <version>6</version>
+    <version>7</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.expressme</groupId>
@@ -21,7 +21,7 @@
   <scm>
     <connection>scm:hg:http://simplejdbc.googlecode.com/hg/</connection>
     <developerConnection>scm:hg:https://simplejdbc.googlecode.com/hg/</developerConnection>
-    <url>http://simplejdbc.googlecode.com/hg/</url>
+    <url>http://simplejdbc.googlecode.com/hg</url>
   </scm>
   <developers>
     <developer>
