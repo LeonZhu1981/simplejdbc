@@ -2,7 +2,11 @@ package org.expressme.simplejdbc;
 
 import static org.junit.Assert.*;
 
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.List;
+
+import javax.sql.DataSource;
 
 import org.expressme.test.User;
 import org.junit.After;
@@ -13,12 +17,19 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class DbTest {
 
-    long id = System.currentTimeMillis();
+    static long id = System.currentTimeMillis();
     Db db = null;
 
     @Before
     public void setUp() throws Exception {
         ApplicationContext context = new ClassPathXmlApplicationContext("DbTest.xml");
+        DataSource dataSource = context.getBean(DataSource.class);
+        Connection conn = dataSource.getConnection();
+        Statement stmt = conn.createStatement();
+        stmt.execute("drop table if exists User");
+        stmt.execute("create table User (id bigint not null primary key, name varchar(50) not null, passwd varchar(50) not null)");
+        stmt.close();
+        conn.close();
         db = context.getBean(Db.class);
     }
 
@@ -37,8 +48,8 @@ public class DbTest {
         for (User user : users) {
             db.create(user);
         }
-        List<User> us = db.queryForList("select * from User where id>=?", ID);
-        assertEquals(3, us.size());
+        List<User> us = db.queryForList("select * from User where name=? and id>=?", "query_for_list", ID);
+        assertEquals(users.length, us.size());
         for (User u : us) {
             assertEquals("query_for_list", u.getName());
             assertEquals("password+", u.getPasswd());

@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,7 +20,7 @@ import org.springframework.jdbc.core.RowMapper;
 /**
  * Database interface.
  * 
- * @author Liao Xuefeng
+ * @author Michael Liao
  */
 public class Db implements InitializingBean {
 
@@ -45,7 +46,7 @@ public class Db implements InitializingBean {
     public void afterPropertiesSet() throws Exception {
         log.info("Init db...");
         // scan package:
-        List<Class<?>> classes = new ClasspathScanner(packageName, new ClasspathScanner.ClassFilter() {
+        Set<Class<?>> classes = new ClasspathScanner(packageName, new ClasspathScanner.ClassFilter() {
             public boolean accept(Class<?> clazz) {
                 return clazz.isAnnotationPresent(Entity.class);
             }

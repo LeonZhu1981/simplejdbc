@@ -1,10 +1,35 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <parent>
+    <artifactId>oss-parent</artifactId>
+    <groupId>org.sonatype.oss</groupId>
+    <version>6</version>
+  </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.expressme</groupId>
-  <artifactId>simplejdbc</artifactId>
+  <artifactId>SimpleJdbc</artifactId>
   <version>1.0-SNAPSHOT</version>
-  <name>Simple JDBC Framework</name>
-  <description>Simple JDBC Framework provides simple but fast JDBC integration.</description>
+  <name>Simple JDBC</name>
+  <description>Simple JDBC Framework provides simple but fast JDBC integration with Spring.</description>
+  <url>http://code.google.com/p/simplejdbc/</url>
+  <licenses>
+    <license>
+      <name>The Apache Software License, Version 2.0</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <connection>scm:hg:http://simplejdbc.googlecode.com/hg/</connection>
+    <developerConnection>scm:hg:https://simplejdbc.googlecode.com/hg/</developerConnection>
+    <url>http://simplejdbc.googlecode.com/hg/</url>
+  </scm>
+  <developers>
+    <developer>
+      <id>michaelliao</id>
+      <name>Michael Liao</name>
+      <email>askxuefeng@gmail.com</email>
+    </developer>
+  </developers>
   <dependencies>
     <dependency>
       <groupId>commons-logging</groupId>
@@ -40,5 +65,65 @@
     	<type>jar</type>
     	<scope>test</scope>
     </dependency>
+    <dependency>
+    	<groupId>hsqldb</groupId>
+    	<artifactId>hsqldb</artifactId>
+    	<version>1.8.0.10</version>
+    	<type>jar</type>
+    	<scope>test</scope>
+    </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>1.6</source>
+          <target>1.6</target>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-docs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <locale>en_US</locale>
+          <bottom><![CDATA[Copyright 2009-2011, <a href="http://code.google.com/p/simplejdbc">Simple JDBC<a>]]></bottom>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
