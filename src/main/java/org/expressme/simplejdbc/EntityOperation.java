@@ -13,7 +13,6 @@ import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Id;
-import javax.persistence.Table;
 import javax.persistence.Transient;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -35,7 +34,7 @@ class EntityOperation<T> {
 
     public EntityOperation(Class<T> entityClass) {
         this.entityClass = entityClass;
-        this.tableName = getTableName(entityClass);
+        this.tableName = entityClass.getSimpleName();
         Map<String, Method> getters = Utils.findPublicGetters(entityClass);
         Map<String, Method> setters = Utils.findPublicSetters(entityClass);
         this.idProperty = findIdProperty(getters);
@@ -69,14 +68,6 @@ class EntityOperation<T> {
                 }
             }
         };
-    }
-
-    String getTableName(Class<?> entityClass) {
-        String name = entityClass.getSimpleName();
-        Table table = entityClass.getAnnotation(Table.class);
-        if (table!=null && ! "".equals(table.name()))
-            name = table.name();
-        return name;
     }
 
     String findIdProperty(Map<String, Method> getters) {

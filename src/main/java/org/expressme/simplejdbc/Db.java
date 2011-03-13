@@ -2,10 +2,9 @@ package org.expressme.simplejdbc;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,7 +12,6 @@ import javax.persistence.Entity;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
@@ -22,59 +20,62 @@ import org.springframework.jdbc.core.RowMapper;
  * 
  * @author Michael Liao
  */
-public class Db implements InitializingBean {
+public class Db {
 
     final Log log = LogFactory.getLog(getClass());
 
     JdbcTemplate jdbcTemplate;
 
-    String packageName;
+    String[] packageNames;
 
     public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
     public void setPackageName(String packageName) {
-        this.packageName = packageName;
+        this.packageNames = new String[] { packageName };
     }
 
-    final Map<String, EntityOperation<?>> entityMap = new HashMap<String, EntityOperation<?>>();
+    public void setPackageNames(List<String> packageNames) {
+        this.packageNames = packageNames.toArray(new String[packageNames.size()]);
+    }
 
-    final Map<String, EntityOperation<?>> tableMap = new HashMap<String, EntityOperation<?>>();
+    final Map<String, EntityOperation<?>> entityMap = new ConcurrentHashMap<String, EntityOperation<?>>();
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    public void afterPropertiesSet() throws Exception {
-        log.info("Init db...");
-        // scan package:
-        Set<Class<?>> classes = new ClasspathScanner(packageName, new ClasspathScanner.ClassFilter() {
-            public boolean accept(Class<?> clazz) {
-                return clazz.isAnnotationPresent(Entity.class);
-            }
-        }).scan();
-        for (Class<?> clazz : classes) {
-            log.info("Found entity class: " + clazz.getName());
-            EntityOperation<?> op = new EntityOperation(clazz);
-            entityMap.put(clazz.getName(), op);
-            tableMap.put(op.tableName, op);
+    Class<?> findClass(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            if (clazz.isAnnotationPresent(Entity.class))
+                return clazz;
         }
+        catch (ClassNotFoundException e) {
+        }
+        for (String packageName : this.packageNames) {
+            try {
+                Class<?> clazz = Class.forName(packageName + "." + className);
+                if (clazz.isAnnotationPresent(Entity.class))
+                    return clazz;
+            }
+            catch (ClassNotFoundException e) {
+            }
+        }
+        return null;
     }
 
     EntityOperation<?> getEntityOperation(Class<?> entityClass) {
         return getEntityOperationByEntityName(entityClass.getName());
     }
 
-    EntityOperation<?> getEntityOperationByTableName(String tableName) {
-        EntityOperation<?> op = tableMap.get(tableName);
-        if (op==null) {
-            throw new DbException("Unknown table: " + tableName);
-        }
-        return op;
-    }
-
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     EntityOperation<?> getEntityOperationByEntityName(String entityClassName) {
         EntityOperation<?> op = entityMap.get(entityClassName);
         if (op==null) {
-            throw new DbException("Unknown entity: " + entityClassName);
+            Class<?> entityClass = findClass(entityClassName);
+            if (entityClass==null)
+                throw new DbException("Unknown entity: " + entityClassName);
+            log.info("Found entity class: " + entityClass.getName());
+            op = new EntityOperation(entityClass);
+            entityMap.put(entityClass.getName(), op);
         }
         return op;
     }
@@ -237,33 +238,8 @@ public class Db implements InitializingBean {
         if ( ! m.matches()) {
             throw new DbException("SQL grammar error: " + sql);
         }
-        EntityOperation<?> op = getEntityOperationByTableName(m.group(3));
+        EntityOperation<?> op = getEntityOperationByEntityName(m.group(3));
         return (List<T>) jdbcTemplate.query(sql, params, op.rowMapper);
-    }
-
-    /**
-     * Query for limited list. For example:
-     * <code>
-     * // first 5 users:
-     * List&lt;User&gt; users = db.queryForList("select * from User where age>?", 0, 5, 20);
-     * </code>
-     * 
-     * @param <T> Return type of list element.
-     * @param sql SQL query.
-     * @param first First result index.
-     * @param max Max results.
-     * @param params SQL parameters.
-     * @return List of query result.
-     */
-    public <T> List<T> queryForLimitedList(String sql, int first, int max, Object... args) {
-        log.info("Query for limited list (first=" + first + ", max=" + max + "): " + sql);
-        Object[] newArgs = new Object[args.length + 2];
-        for (int i = 0; i < args.length; i++) {
-            newArgs[i] = args[i];
-        }
-        newArgs[newArgs.length - 2] = first;
-        newArgs[newArgs.length - 1] = max;
-        return queryForList(buildLimitedSelect(sql), newArgs);
     }
 
     /**
@@ -315,6 +291,25 @@ public class Db implements InitializingBean {
         jdbcTemplate.update(sqlo.sql, sqlo.params);
     }
 
+    /**
+     * Query for limited list. For example:
+     * <code>
+     * // first 5 users:
+     * List&lt;User&gt; users = db.queryForList("select * from User where age>?", 0, 5, 20);
+     * </code>
+     * 
+     * @param <T> Return type of list element.
+     * @param sql SQL query.
+     * @param first First result index.
+     * @param max Max results.
+     * @param params SQL parameters.
+     * @return List of query result.
+     */
+    public <T> List<T> queryForLimitedList(String sql, int first, int max, Object... args) {
+        log.info("Query for limited list (first=" + first + ", max=" + max + "): " + sql);
+        return queryForList(buildLimitedSelect(sql), buildLimitedArgs(args, first, max));
+    }
+
     String buildLimitedSelect(String select) {
         StringBuilder sb = new StringBuilder(select.length() + 20);
         boolean forUpdate = select.toLowerCase().endsWith(" for update");
@@ -331,4 +326,13 @@ public class Db implements InitializingBean {
         return sb.toString();
     }
 
+    Object[] buildLimitedArgs(Object[] args, int first, int max) {
+        Object[] newArgs = new Object[args.length + 2];
+        for (int i = 0; i < args.length; i++) {
+            newArgs[i] = args[i];
+        }
+        newArgs[newArgs.length - 2] = first;
+        newArgs[newArgs.length - 1] = max;
+        return newArgs;
+    }
 }

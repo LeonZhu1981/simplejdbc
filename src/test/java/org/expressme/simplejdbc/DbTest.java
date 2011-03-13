@@ -9,7 +9,6 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import org.expressme.test.User;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.context.ApplicationContext;
@@ -27,14 +26,10 @@ public class DbTest {
         Connection conn = dataSource.getConnection();
         Statement stmt = conn.createStatement();
         stmt.execute("drop table if exists User");
-        stmt.execute("create table User (id bigint not null primary key, name varchar(50) not null, passwd varchar(50) not null)");
+        stmt.execute("create table User (id bigint not null primary key, name varchar(50) not null, passwd varchar(50) not null, css_style_name varchar(50) null)");
         stmt.close();
         conn.close();
         db = context.getBean(Db.class);
-    }
-
-    @After
-    public void tearDown() throws Exception {
     }
 
     @Test

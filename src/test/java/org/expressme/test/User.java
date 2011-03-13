@@ -1,5 +1,6 @@
 package org.expressme.test;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 
@@ -9,6 +10,7 @@ public class User {
     long id;
     String name;
     String passwd;
+    String cssStyleName;
 
     public User() {}
 
@@ -41,6 +43,15 @@ public class User {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    @Column(name="css_style_name")
+    public String getCssStyleName() {
+        return cssStyleName;
+    }
+
+    public void setCssStyleName(String cssStyleName) {
+        this.cssStyleName = cssStyleName;
     }
 
 }
