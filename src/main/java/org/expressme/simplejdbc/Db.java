@@ -75,7 +75,7 @@ public class Db {
                 throw new DbException("Unknown entity: " + entityClassName);
             log.info("Found entity class: " + entityClass.getName());
             op = new EntityOperation(entityClass);
-            entityMap.put(entityClass.getName(), op);
+            entityMap.put(entityClass.getSimpleName(), op);
         }
         return op;
     }
