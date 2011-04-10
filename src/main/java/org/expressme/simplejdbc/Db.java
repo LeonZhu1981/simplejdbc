@@ -63,7 +63,7 @@ public class Db {
     }
 
     EntityOperation<?> getEntityOperation(Class<?> entityClass) {
-        return getEntityOperationByEntityName(entityClass.getName());
+        return getEntityOperationByEntityName(entityClass.getSimpleName());
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
